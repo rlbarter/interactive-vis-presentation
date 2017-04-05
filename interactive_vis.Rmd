@@ -1,0 +1,195 @@
+---
+title: "Interactive Visualization in R"
+author: "Rebecca Barter"
+date: "4/4/2017"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+Many of those new to R remain stuck in the peaceful world of base R graphics, woefully unaware of the wonderful world of visualization lying just a few taps of the keyboard away!
+
+The goal of this post is to describe the visualization world that lives within the R universe (and a little beyond). I will start from the basics of inbuilt R plotting, introduce the (hopefully already familliar) ggplot2, then blast off into the interactive stratosphere!
+
+```{r, message=FALSE}
+library(ggplot2)
+library(knitr)
+library(dplyr)
+library(DT)
+library(plotly)
+library(lubridate)
+```
+
+I will use the Texan house prices dataset (loaded with the `plotly` package) to describe the visualization ecosystem. Feel free to play around with the table below which displays the dataset.
+
+```{r}
+datatable(txhousing)
+```
+
+## Base plot
+
+The first thing you probably learnt about visualization in R is how to produce a simple scatterplot. For example, to plot a static scatterplot of date versus sales, you simply tell R to literally "plot" one against the other.
+
+```{r, fig.align="center"}
+plot(txhousing$date, txhousing$sales)
+```
+
+The result ends up being fairly ugly. You can make it a little prettier, but it's still fairly inflexible.
+
+```{r, echo = TRUE, fig.align="center"}
+plot(x = txhousing$date, 
+     y = txhousing$sales, 
+     col = "cornflowerblue", 
+     pch = 16,
+     xlab = "date",
+     ylab = "sales")
+```
+
+Fortunately, a guy named Hadley Wickham came along one day and completely designed his own plotting universe for R. Although it comes with its own language, once you have a handle on the syntax, it is extremely powerful.
+
+## ggplot2: enhancing static plots
+
+To produce a similar, but prettier plot to that above, we can use the following:
+
+```{r, fig.align="center"}
+ggplot(txhousing) +
+  geom_line(aes(x = date, 
+                y = sales, 
+                group = city),
+            alpha = 0.4) 
+```
+
+The syntax can be read as "*make a ggplot object from the diamonds dataset then add some points to it*". Initially, this might just seem like a more complicated way to to base plotting, but it's so much more: the ability to add themes and objects to a plot in a desired order is utterly revolutionary!
+
+Since this post isn't really about ggplot2, I'll leave you with a gentle encouragement to use ggplot2 if you don't already do so. Let's move onto the even more juicy stuff: interactivity.
+
+## Plotly: a first foray into interactivity
+
+Wouldn't it be cool if, instead of having to learn all this extra fancy stuff to do interactivity, you could just tell R to make your existing plot interactive? Sounds amazing right? Well I'm here to tell you that *it is literally that easy*; just use [**plotly**](https://cpsievert.github.io/plotly_book/) to transform your ggplot object into an interactive plotly object.
+
+Your interactive plot will have tooltips, zooming, and panning enabled by default.
+
+```{r, message = FALSE, warning=FALSE, fig.align="center"}
+# define our ggplot2 plot
+g <- ggplot(txhousing) +
+  geom_line(aes(x = date, y = sales, group = city),
+            alpha = 0.4)
+# make it interactive!
+ggplotly(g, tooltip = c("city"))
+```
+
+
+You can also use plotly independently of ggplot2 for even further customization. To convert your data directly into an interactive plotly object
+
+```{r}
+
+txhousing %>% 
+  # group by city
+  group_by(city) %>%
+  # initiate a plotly object with date on x and median on y
+  plot_ly(x = ~date, y = ~median) %>%
+  # plots one line per city since p knows city is a grouping variable
+  add_lines(alpha = 0.2, 
+            name = "Texan Cities", 
+            hoverinfo = "none") %>%
+  add_lines(name = "Houston", 
+            data = filter(txhousing, city == "Houston")) %>%
+  add_lines(name = "Dallas", 
+            data = filter(txhousing, city == "Dallas"))
+
+```
+
+A more flexible way to do this is using the `add_fun` capabilities
+
+```{r}
+# add the plot for all Texan cities
+allCities <- txhousing %>%
+  group_by(city) %>%
+  plot_ly(x = ~date, y = ~median) %>%
+  add_lines(alpha = 0.2, name = "Texan Cities", hoverinfo = "none")
+
+# define a reusable function for highlighting a particular city
+layer_city <- function(plot, name) {
+  plot %>% filter(city == name) %>% add_lines(name = name)
+}
+
+# add the individual plots
+allCities %>% 
+  # add a layer for Houston
+  add_fun(layer_city, "Houston") %>%
+  add_fun(layer_city, "Dallas") 
+```
+
+### Adding a slider
+
+
+```{r}
+allCities %>% 
+  # add a layer for Houston
+  add_fun(layer_city, "Houston") %>%
+  # add a layer for Dallas
+  add_fun(layer_city, "Dallas") %>%
+  rangeslider
+
+```
+
+
+## Linking with Crosstalk
+
+As far as ggplotly() and plot_ly() are concerned, SharedData object(s) act just like a data frame, but with a special key attribute attached to graphical elements.
+
+
+
+```{r, message=FALSE, eval = FALSE}
+library(crosstalk)
+library(htmltools)
+# define a SharedData object, grouping by year
+sd <- SharedData$new(txhousing, ~city)
+
+# plot median house prices by month, with one line per year
+p <- ggplot(sd, aes(date, median)) +
+  geom_line() 
+
+# turn plot into a plotly object
+gg <- ggplotly(p, tooltip = "city")
+
+# highlight options
+highlight(gg, on = "plotly_click", dynamic = TRUE)
+highlight(gg, on = "plotly_click", dynamic = TRUE, persistent = TRUE)
+```
+
+
+```{r, message=FALSE, echo = FALSE}
+library(crosstalk)
+library(htmltools)
+# define a SharedData object, grouping by year
+sd <- SharedData$new(txhousing, ~city)
+
+# plot median house prices by month, with one line per year
+p <- ggplot(sd, aes(date, median)) +
+  geom_line() 
+
+# turn plot into a plotly object
+gg <- ggplotly(p, tooltip = "city")
+
+# highlight options
+library(shiny)
+fluidPage(
+  fluidRow(
+    column(6, highlight(gg, on = "plotly_click", dynamic = TRUE)), 
+    column(6, highlight(gg, on = "plotly_click", dynamic = TRUE, persistent = TRUE)) 
+  )
+)
+```
+
+
+## shiny
+
+If you're looking for further interactive options, and want to create a solid web-based application, then you need look no further than the shiny package, which allows you to create and host your own interactive application.
+
+
+
+## d3 in R
+
+You might have heard about D3.js, and if so, you might have been somewhat intimidated by learning how to use it due to the barrier of needing some Javascript. Never fear, smart people are here, and these smart people have adapted many of the common D3 functionalities for use directly in R.
