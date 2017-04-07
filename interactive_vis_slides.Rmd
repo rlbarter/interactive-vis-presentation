@@ -1,0 +1,217 @@
+---
+title: "Interactive Visualization in R"
+author: "Rebecca Barter"
+date: "4/7/2017"
+output: ioslides_presentation
+---
+
+# Why be interactive?
+
+
+# ... because it's awesome!
+
+## Examples on the web
+
+Some super cool examples include:
+
+- [Olympic medals](https://www.washingtonpost.com/graphics/sports/olympics/the-1000-medals-of-the-united-states/)
+
+- [Vaccination simulation](https://www.theguardian.com/society/ng-interactive/2015/feb/05/-sp-watch-how-measles-outbreak-spreads-when-kids-get-vaccinated)
+
+- [Income](https://flowingdata.com/2016/06/28/distributions-of-annual-income/)
+
+- [Gender gap](http://www.chronicle.com/interactives/gender-gap)
+
+- [America's opinions](https://projects.fivethirtyeight.com/obama-polling-trends/)
+
+
+
+
+## Main tools in R
+
+Make your scatter plots, line plots, bar plots, etc interactive
+
+- Plotly
+
+- Highcharts
+
+- crosstalk
+
+Make D3.js plots in R (no javascript required!)
+
+- rCharts (D3.js)
+
+- d3scatter
+
+- networkD3
+
+# Making ggplot2 interactive
+
+## ggplot2
+
+```{r, message=FALSE, warning = FALSE, fig.align="center", fig.height = 4, fig.width = 7}
+library(ggplot2)
+g <- ggplot(txhousing, aes(x = date, y = sales, group = city)) +
+  geom_line(alpha = 0.4)
+g
+```
+
+
+## ggplot2 + plotly
+```{r, eval = FALSE, message=FALSE, warning = FALSE, fig.align="center", fig.height = 4, fig.width = 7}
+library(plotly)
+g <- ggplot(txhousing, aes(x = date, y = sales, group = city)) +
+  geom_line(alpha = 0.4) 
+ggplotly(g, tooltip = c("city"))
+```
+
+<center>
+```{r, echo = FALSE, message=FALSE, warning = FALSE, fig.align="center", fig.height = 4, fig.width = 7}
+library(plotly)
+g <- ggplot(txhousing, aes(x = date, y = sales, group = city)) +
+  geom_line(alpha = 0.4) 
+ggplotly(g, tooltip = c("city"))
+```
+</center>
+
+
+
+
+## plotly
+
+
+
+```{r eval = FALSE}
+g <- txhousing %>% 
+  # group by city
+  group_by(city) %>%
+  # initiate a plotly object with date on x and median on y
+  plot_ly(x = ~date, y = ~median) %>%
+  # add a line plot for all texan cities
+  add_lines(name = "Texan Cities", hoverinfo = "none", 
+            type = "scatter", mode = "lines", 
+            line = list(color = 'rgba(192,192,192,0.4)')) %>%
+  # plot separate lines for Dallas and Houston
+  add_lines(name = "Houston", 
+            data = filter(txhousing, 
+                          city %in% c("Dallas", "Houston")),
+            hoverinfo = "city",
+            line = list(color = c("red", "blue")),
+            color = ~city)
+g
+```
+
+## plotly
+
+
+<center>
+```{r echo = FALSE, warning=FALSE, fig.height = 5, fig.width = 8}
+g <- txhousing %>% 
+  # group by city
+  group_by(city) %>%
+  # initiate a plotly object with date on x and median on y
+  plot_ly(x = ~date, y = ~median) %>%
+  add_lines(name = "Texan Cities", hoverinfo = "none", 
+          type = "scatter", mode = "lines", 
+          line = list(color = 'rgba(192,192,192,0.3)')) %>%
+  # plots one line per city since p knows city is a grouping variable
+  add_lines(name = "Houston", 
+            data = filter(txhousing, city %in% c("Dallas", "Houston")),
+            color = ~city, hoverinfo = "city",
+            line = list(color = c("red", "blue")))
+g
+```
+</center>
+
+## plotly: adding a slider
+
+```{r eval = FALSE, warning=FALSE}
+g %>% rangeslider
+```
+
+<center>
+```{r echo = FALSE, fig.height = 5, fig.width = 8, warning=FALSE}
+g %>% rangeslider()
+```
+</center>
+
+
+# Linking with Crosstalk
+
+
+## Linking with Crosstalk
+
+
+
+```{r, message=FALSE, eval = FALSE}
+library(crosstalk)
+library(htmltools)
+# define a SharedData object, grouping by year
+sd <- SharedData$new(txhousing, ~city)
+# plot median house prices by month, with one line per year
+p <- sd %>% ggplot(aes(date, median)) +
+  geom_line() 
+# turn plot into a plotly object
+gg <- ggplotly(p, hoverinfo = "city")
+# highlight options
+highlight(gg, on = "plotly_click", dynamic = TRUE)
+highlight(gg, on = "plotly_click", dynamic = TRUE, persistent = TRUE)
+```
+
+
+
+## Linking with Crosstalk
+
+```{r, message=FALSE, echo = FALSE}
+library(crosstalk)
+library(htmltools)
+# define a SharedData object, grouping by year
+sd <- SharedData$new(txhousing, ~city)
+
+# plot median house prices by month, with one line per year
+p <- ggplot(sd, aes(date, median)) +
+  geom_line() 
+
+# turn plot into a plotly object
+gg <- ggplotly(p, tooltip = "city")
+
+# highlight options
+library(shiny)
+fluidPage(
+  fluidRow(
+    column(6, highlight(gg, on = "plotly_click", dynamic = TRUE)), 
+    column(6, highlight(gg, on = "plotly_click", dynamic = TRUE, persistent = TRUE)) 
+  )
+)
+```
+
+
+# Easy D3.js in R
+
+## Force networks
+
+```{r}
+library(networkD3)
+data(MisLinks, MisNodes)
+head(MisLinks, 4)
+head(MisNodes, 4)
+```
+
+```{r eval = FALSE}
+forceNetwork(Links = MisLinks, Nodes = MisNodes, Source = "source",
+             Target = "target", Value = "value", NodeID = "name",
+             Group = "group", opacity = 0.9, Nodesize = 3, 
+             linkDistance = 100, fontSize = 20)
+```
+
+## Force networks
+
+```{r, echo = FALSE}
+library(networkD3)
+data(MisLinks, MisNodes)
+forceNetwork(Links = MisLinks, Nodes = MisNodes, Source = "source",
+             Target = "target", Value = "value", NodeID = "name",
+             Group = "group", opacity = 0.9, Nodesize = 3, 
+             linkDistance = 100, fontSize = 20)
+```
+

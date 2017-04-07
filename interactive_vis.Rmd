@@ -184,6 +184,24 @@ fluidPage(
 ```
 
 
+
+```{r}
+library(crosstalk)
+library(d3scatter)
+shared_mtcars <- SharedData$new(mtcars)
+bscols(widths = c(3,NA,NA),
+  list(
+    filter_checkbox("cyl", "Cylinders", shared_mtcars, ~cyl, inline = TRUE),
+    filter_slider("hp", "Horsepower", shared_mtcars, ~hp, width = "100%"),
+    filter_select("auto", "Automatic", shared_mtcars, ~ifelse(am == 0, "Yes", "No"))
+  ),
+  d3scatter(shared_mtcars, ~wt, ~mpg, ~factor(cyl), width="100%", height=250),
+  d3scatter(shared_mtcars, ~hp, ~qsec, ~factor(cyl), width="100%", height=250)
+)
+
+```
+
+
 ## shiny
 
 If you're looking for further interactive options, and want to create a solid web-based application, then you need look no further than the shiny package, which allows you to create and host your own interactive application.
@@ -192,4 +210,71 @@ If you're looking for further interactive options, and want to create a solid we
 
 ## d3 in R
 
-You might have heard about D3.js, and if so, you might have been somewhat intimidated by learning how to use it due to the barrier of needing some Javascript. Never fear, smart people are here, and these smart people have adapted many of the common D3 functionalities for use directly in R.
+You might have heard about D3.js ([example](https://bl.ocks.org/mbostock/7607535)), and if so, you might have been somewhat intimidated by learning how to use it due to the barrier of needing some Javascript. Never fear, smart people are here, and these smart people have adapted many of the common D3 functionalities for use directly in R.
+
+```{r}
+library(networkD3)
+data(MisLinks, MisNodes)
+forceNetwork(Links = MisLinks, Nodes = MisNodes, Source = "source",
+             Target = "target", Value = "value", NodeID = "name",
+             Group = "group", opacity = 0.4)
+```
+
+
+```{r}
+library(networkD3)
+cohort.links <- data.frame(source = c(0, 0, 1, 1, 3, 3),
+                           target = c(1, 2, 3, 4, 5, 6),
+                           value = c(37, 4, 34, 3, 13, 21))
+cohort.nodes <- data.frame(nodeid = c("cohort (41)", 
+                                      "cohort (37)", "no samples (4)", 
+                                      "cohort (34)", "death (3)", 
+                                      "cohort (13)", "<3 pre-rej. samples (21)"),
+                           group = c("blue", rep(c("blue", "red"), 3)))
+sankeyNetwork(cohort.links, cohort.nodes, Source = "source", Target = "target", 
+              Value = "value", NodeID = "nodeid", fontSize = 18, nodeWidth = 30,
+              nodePadding = 50, NodeGroup = "group",
+              colourScale = sprintf("d3.scale.category10().range(%s).domain(%s)", 
+                                    '["#b2182b","#999999"]',
+                                    jsonlite::toJSON(unique(cohort.nodes$group))))
+
+```
+
+
+```{r}
+# http://jeromefroe.github.io/circlepackeR/
+devtools::install_github("jeromefroe/circlepackeR")
+library(circlepackeR)
+hierarchical_list <- list(name = "World",
+            children = list(
+              list(name = "North America",
+                   children = list(
+                     list(name = "United States", size = 308865000),
+                     list(name = "Mexico", size = 107550697),
+                     list(name = "Canada", size = 34033000))),
+              list(name = "South America", 
+                   children = list(
+                     list(name = "Brazil", size = 192612000),
+                     list(name = "Colombia", size = 45349000),
+                     list(name = "Argentina", size = 40134425))),
+              list(name = "Europe",  
+                   children = list(
+                     list(name = "Germany", size = 81757600),
+                     list(name = "France", size = 65447374),
+                     list(name = "United Kingdom", size = 62041708))),
+              list(name = "Africa",  
+                   children = list(
+                     list(name = "Nigeria", size = 154729000),
+                     list(name = "Ethiopia", size = 79221000),
+                     list(name = "Egypt", size = 77979000))),
+              list(name = "Asia",  
+                   children = list(
+                     list(name = "China", size = 1336335000),
+                     list(name = "India", size = 1178225000),
+                     list(name = "Indonesia", size = 231369500)))
+            )
+)
+
+circlepackeR(hierarchical_list)
+
+```
