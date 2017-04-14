@@ -8,7 +8,6 @@ output: ioslides_presentation
 # Why be interactive?
 
 
-# ... because it's awesome!
 
 ## Examples on the web
 
@@ -20,9 +19,12 @@ Some super cool examples include:
 
 - [Income](https://flowingdata.com/2016/06/28/distributions-of-annual-income/)
 
-- [Gender gap](http://www.chronicle.com/interactives/gender-gap)
-
 - [America's opinions](https://projects.fivethirtyeight.com/obama-polling-trends/)
+
+- [Music](http://www.datasketch.es/december/code/nadieh/)
+
+- [Sam talks too much](http://www.datasketch.es/july/code/nadieh/)
+
 
 
 
@@ -109,8 +111,10 @@ g
 g <- txhousing %>% 
   # group by city
   group_by(city) %>%
+  
   # initiate a plotly object with date on x and median on y
   plot_ly(x = ~date, y = ~median) %>%
+  
   add_lines(name = "Texan Cities", hoverinfo = "none", 
           type = "scatter", mode = "lines", 
           line = list(color = 'rgba(192,192,192,0.3)')) %>%
@@ -143,19 +147,63 @@ g %>% rangeslider()
 
 
 
-```{r, message=FALSE, eval = FALSE}
+```{r eval = FALSE}
 library(crosstalk)
-library(htmltools)
-# define a SharedData object, grouping by year
-sd <- SharedData$new(txhousing, ~city)
-# plot median house prices by month, with one line per year
-p <- sd %>% ggplot(aes(date, median)) +
-  geom_line() 
-# turn plot into a plotly object
-gg <- ggplotly(p, hoverinfo = "city")
-# highlight options
-highlight(gg, on = "plotly_click", dynamic = TRUE)
-highlight(gg, on = "plotly_click", dynamic = TRUE, persistent = TRUE)
+# define a shared data object
+d <- SharedData$new(mtcars)
+# make a scatterplot of disp vs mpg
+scatterplot <- plot_ly(d, x = ~mpg, y = ~disp) %>%
+  add_markers(color = I("navy"))
+# define two subplots: boxplot and scatterplot
+subplot(
+  # boxplot of disp
+  plot_ly(d, y = ~disp) %>% 
+    add_boxplot(name = "overall", 
+                color = I("navy")),
+  # scatterplot of disp vs mpg
+  scatterplot, 
+  shareY = TRUE, titleX = T) %>% 
+  layout(dragmode = "select")
+
+
+```
+
+
+
+## Linking with Crosstalk
+
+```{r echo = FALSE}
+library(crosstalk)
+# define a shared data object
+d <- SharedData$new(mtcars)
+# make a scatterplot of disp vs mpg
+scatterplot <- plot_ly(d, x = ~mpg, y = ~disp) %>%
+  add_markers(color = I("navy"))
+# define two subplots: boxplot and scatterplot
+subplot(
+  # boxplot of disp
+  plot_ly(d, y = ~disp) %>% 
+    add_boxplot(name = "overall", 
+                color = I("navy")),
+  # scatterplot of disp vs mpg
+  scatterplot, shareY = TRUE, titleX = T) %>% 
+  layout(dragmode = "select")
+
+```
+
+## Linking with Crosstalk
+
+```{r, message=FALSE, eval = FALSE}
+# make subplots
+p <- subplot(
+  # histogram (counts) of gear
+  plot_ly(d, x = ~factor(gear)) %>% 
+    add_histogram(color = I("grey50")),
+  # scatterplot of disp vs mpg
+  scatterplot, 
+  titleX = T
+) 
+layout(p, barmode = "overlay")
 ```
 
 
@@ -163,28 +211,13 @@ highlight(gg, on = "plotly_click", dynamic = TRUE, persistent = TRUE)
 ## Linking with Crosstalk
 
 ```{r, message=FALSE, echo = FALSE}
-library(crosstalk)
-library(htmltools)
-# define a SharedData object, grouping by year
-sd <- SharedData$new(txhousing, ~city)
-
-# plot median house prices by month, with one line per year
-p <- ggplot(sd, aes(date, median)) +
-  geom_line() 
-
-# turn plot into a plotly object
-gg <- ggplotly(p, tooltip = "city")
-
-# highlight options
-library(shiny)
-fluidPage(
-  fluidRow(
-    column(6, highlight(gg, on = "plotly_click", dynamic = TRUE)), 
-    column(6, highlight(gg, on = "plotly_click", dynamic = TRUE, persistent = TRUE)) 
-  )
-)
+p <- subplot(
+  plot_ly(d, x = ~factor(gear)) %>% 
+    add_histogram(color = I("grey50")),
+  scatterplot, titleX = T
+) 
+layout(p, barmode = "overlay")
 ```
-
 
 # Easy D3.js in R
 
@@ -193,9 +226,11 @@ fluidPage(
 ```{r}
 library(networkD3)
 data(MisLinks, MisNodes)
-head(MisLinks, 4)
-head(MisNodes, 4)
+head(MisLinks, 3)
+head(MisNodes, 3)
 ```
+
+## Force networks
 
 ```{r eval = FALSE}
 forceNetwork(Links = MisLinks, Nodes = MisNodes, Source = "source",
@@ -209,9 +244,67 @@ forceNetwork(Links = MisLinks, Nodes = MisNodes, Source = "source",
 ```{r, echo = FALSE}
 library(networkD3)
 data(MisLinks, MisNodes)
-forceNetwork(Links = MisLinks, Nodes = MisNodes, Source = "source",
-             Target = "target", Value = "value", NodeID = "name",
+forceNetwork(Links = MisLinks, 
+             Nodes = MisNodes, 
+             Source = "source", Target = "target", 
+             Value = "value", NodeID = "name",
              Group = "group", opacity = 0.9, Nodesize = 3, 
              linkDistance = 100, fontSize = 20)
 ```
 
+## Chord diagrams
+
+```{r echo = FALSE}
+hair.preference <- matrix(c(11975,  5871, 8916, 2868,
+              1951, 10048, 2060, 6171,
+              8010, 16145, 8090, 8045,
+              1013,   990,  940, 6907),
+            byrow = TRUE, nrow = 4, ncol = 4)
+haircolors <- c("black", "blonde", "brown", "red")
+dimnames(hair.preference) <- list(have = haircolors,
+                    prefer = haircolors)
+
+```
+
+```{r eval = FALSE}
+# devtools::install_github("mattflor/chorddiag")
+library(chorddiag)
+# plot the hair preferences data
+```
+```{r echo = FALSE}
+library(chorddiag)
+```
+```{r}
+hair.preference
+```
+```{r eval = FALSE}
+# make a chord diagram
+groupColors <- c("#000000", "#FFDD89", "#957244", "#F26223")
+chorddiag(hair.preference, 
+          groupColors = groupColors, groupnamePadding = 40)
+```
+
+## Chord diagrams
+
+```{r echo = FALSE}
+groupColors <- c("#000000", "#FFDD89", "#957244", "#F26223")
+chorddiag(hair.preference, groupColors = groupColors, 
+          groupnamePadding = 40)
+
+```
+
+## References
+
+plotly references:
+
+https://cpsievert.github.io/plotly_book/
+
+https://plot.ly/r/
+
+crosstalk:
+
+https://rstudio.github.io/crosstalk/using.html
+
+chord diagram example: 
+
+http://stackoverflow.com/questions/14599150/chord-diagram-in-r
